@@ -1,0 +1,418 @@
+%\VignetteIndexEntry{msmsTests: post test filters to improve reproducibility}
+%\VignetteDepends{msmsTests}
+%\VignetteKeywords{multivariate, hplot}
+%\VignettePackage{msmsTests}
+
+\documentclass[12pt,a4paper,oneside]{article}
+\usepackage{fullpage}
+\usepackage{float}
+\usepackage[section]{placeins}
+\usepackage{enumerate}
+
+\begin{document}
+\SweaveOpts{keep.source=TRUE,concordance=TRUE}
+
+\title{msmsTests package\\
+       LC-MS/MS post test filters to improve reproducibility}
+\author{Josep Gregori, Alex Sanchez, and Josep Villanueva\\
+   Vall Hebron Institute of Oncology \&\\
+   Statistics Dept. Barcelona University\\
+  \texttt{jgregori@vhio.net}}
+\date{July 2013}
+
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+
+The \emph{omics} technologies are in general challenged by a high
+dimensionality problem, whereby a high number of statistical tests are carried
+out at the same time on very few samples. The high number of tests that are
+carried out simultaneously requires a p-value adjustment to control the false
+discovery rate (FDR). The low number of replicates, combined with a high
+number of statistical tests easily leads to low reproducibility in the results. Shi et al. addressed this issue in a systematic manner using a large dataset
+elaborated within the studies of the MicroArray Quality Control Consortium
+(MAQC) \cite{shi2010}. The MAQC studied the possible sources of the limitations 
+of microarray (MA) studies that precluded obtaining reproducible results across
+laboratories and platforms. Their conclusions underscored the influence of
+batch effects and the limitation introduced by using only the p-value criteria 
+to get ordered lists of differentially expressed features as the main
+weaknesses in MA studies \cite{shi2008} \cite{luo2010}.
+This recommendation makes an intuitive appeal to the use of a post-test filter, excluding features that show low p-values but poor effect size or low signal strength, as a mean to guaranty a minimal level of reproducibility.
+
+Label-free differential proteomics is based on comparing the expression of 
+proteins between different biological conditions
+\cite{mallik2010} \cite{neilson2011}. The expression of a protein by LC-MS/MS
+may be obtained by MS peak intensity measures or by the number of spectral 
+counts assigned to that protein in a LC-MS/MS run. Here we concentrate on 
+spectral counts.
+
+In proteomics reproducibility is also of great concern, and the use of such 
+post-test filters may help notably \cite{gregori2013}.
+
+\section{An example LC-MS/MS dataset}
+
+The example dataset \cite{gregori2013} is the result of multiple spiking 
+experiments, showing real LC-MS/MS data . Samples of 500 micrograms of a 
+standard yeast lysate are spiked with 100, 200, 400 and 600fm of a complex 
+mix of 48 equimolar human proteins (UPS1, Sigma-Aldrich). The number of 
+technical replicates vary between 3 to 6.
+\newline
+The dataset consists in an instance of the \emph{MSnSet} class, defined in the 
+MSnbase package \cite{Gatto2012}, a S4 class \cite{chambers} \cite{genolini}. 
+This \emph{MSnSet} object contains
+a spectral counts (SpC) matrix in the \emph{assayData}
+slot, and a factor treatment in the \emph{phenoData} slot.
+(See also the expressionSet vignette by vignette("ExpressionSetIntroduction",package="Biobase") \cite{gentleman})
+
+<<echo=FALSE>>=
+options(continue=" ")
+@
+
+<<setup.chunk, echo = TRUE>>=
+library(msmsTests)
+data(msms.spk)
+msms.spk
+dim(msms.spk)
+head(pData(msms.spk))
+table(pData(msms.spk)$treat)
+@
+
+Although the mix is equimolar the signal strength of each protein is markedly
+different, allowing to cover the full range of SpC values, what makes it 
+specially worth in this sort of experiments:
+
+<<SpC.dist.chunk, echo = TRUE>>=
+msms.spc <- exprs(msms.spk)
+treat <- pData(msms.spk)
+idx <- grep("HUMAN",rownames(msms.spc)) 
+mSpC <- t( apply(msms.spc[idx,],1,function(x) tapply(x,treat,mean)) )
+apply(mSpC,2,summary)
+@
+
+\section{Differential expression tests on spectral counts}
+
+Spectral counts (SpC) is an integer measure which requires of tests suited to compare counts, as the GML methods based in the Poisson distribution, the 
+negative-binomial, or the quasilikelihood \cite{agresti2002}
+
+Generally speaking no test is superior to the other. They are just more or less
+indicated in some cases. The Poisson regression requires the estimation of just one parameter, and is indicated when the number of replicates is low, two or
+three. A drawback of the Poisson distribution is that its variance equals its 
+mean, and it is not able to explain extra sources of variability a part of the
+sampling. Quasi-likelihood is a distribution independent GLM, but requires of 
+the estimation of two parameters and hence needs a higher number of replicates,
+i.e. not less than four. The negative-binomial requires two parameters too, but 
+we may use the implementation of this GLM in the edgeR package 
+\cite{robinson2010} which uses an empirical Bayes method to share information
+across features and may be employed with a restricted number of replicates; in
+the worst case it limits with the Poisson solution.
+
+\section{Poisson GLM regression example}
+
+When using the Poisson distribution we implicitly accept a model not sensitive 
+to biological variability \cite{agresti2002}. So it is just recommended in cases
+where we have very few replicates, if any, and we do not expect a significant
+biological variability between samples.
+
+<<Chunk1.Poiss, echo=TRUE>>=
+### Subset to the 200 and 600fm spikings
+fl <- treat=="U200" | treat=="U600"
+e <- msms.spk[,fl]
+table(pData(e))
+### Remove all zero rows
+e <- pp.msms.data(e)
+dim(e)
+
+### Null and alternative model
+null.f <- "y~1"
+alt.f <- "y~treat"
+### Normalizing condition
+div <- apply(exprs(e),2,sum)
+### Poisson GLM
+pois.res <- msms.glm.pois(e,alt.f,null.f,div=div)
+str(pois.res)
+
+### DEPs on unadjusted p-values
+sum(pois.res$p.value<=0.01)
+### DEPs on multitest adjusted p-values
+adjp <- p.adjust(pois.res$p.value,method="BH")
+sum(adjp<=0.01)
+
+### The top features
+o <- order(pois.res$p.value)
+head(pois.res[o,],20)
+
+### How the UPS1 proteins get ordered in the list
+grep("HUMAN",rownames(pois.res[o,])) 
+
+###  Truth table
+nh <- length(grep("HUMAN",featureNames(e)))
+ny <- length(grep("HUMAN",featureNames(e),invert=TRUE))
+tp <- length(grep("HUMAN",rownames(pois.res)[adjp<=0.01]))
+fp <- sum(adjp<=0.01)-tp
+(tt.pois1 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+\section{Quasi-likelihood GLM regression example}
+
+The quasi-likelihood is a distribution free model that allows for 
+overdispersion, and could be indicated where an appreciable source of
+biological variability is expected. In this model, instead of 
+specifying a probability distribution for the data, we just provide a 
+relationship between mean and variance. This relationship takes the form of
+a function, with a multiplicative factor known as the overdispersion, which
+has to be estimated from the data \cite{agresti2002}. Its use in proteomics
+has been documented by Li et al. (2010)\cite{li2010}.
+
+<<Chunk2.QL, echo=TRUE>>=
+### Quasi-likelihood GLM
+ql.res <- msms.glm.qlll(e,alt.f,null.f,div=div)
+str(ql.res)
+
+### DEPs on unadjusted p-values
+sum(ql.res$p.value<=0.01)
+### DEPs on multitest adjusted p-values
+adjp <- p.adjust(ql.res$p.value,method="BH")
+sum(adjp<=0.01)
+
+### The top features
+o <- order(ql.res$p.value)
+head(ql.res[o,],20)
+
+### How the UPS1 proteins get ordered in the list
+grep("HUMAN",rownames(ql.res[o,]))
+
+###  Truth table
+tp <- length(grep("HUMAN",rownames(ql.res)[adjp<=0.01]))
+fp <- sum(adjp<=0.01)-tp
+(tt.ql1 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+\section{edgeR: negative binomial GLM regression example}
+
+The negative-binomial provides another model that allows for overdispersion. The
+implementation adopted in this package is entirely based in the solution
+provided by the package edgeR \cite{robinson2010} which includes empirical
+Bayes methods to share information among features, and thus may be employed
+even when the number of replicates is as low as two. The negative-binomial is downward limited, when no overdispersion is observed, by the Poisson 
+distribution. 
+
+<<Chunk3.edgeR, echo=TRUE>>=
+### Negative-binomial
+nb.res <- msms.edgeR(e,alt.f,null.f,div=div,fnm="treat")
+str(nb.res)
+
+### DEPs on unadjusted p-values
+sum(nb.res$p.value<=0.01)
+### DEPs on multitest adjusted p-values
+adjp <- p.adjust(nb.res$p.value,method="BH")
+sum(adjp<=0.01)
+
+### The top features
+o <- order(nb.res$p.value)
+head(nb.res[o,],20)
+
+### How the UPS1 proteins get ordered in the list
+grep("HUMAN",rownames(nb.res[o,])) 
+
+###  Truth table
+tp <- length(grep("HUMAN",rownames(nb.res)[adjp<=0.01]))
+fp <- sum(adjp<=0.01)-tp
+(tt.nb1 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+\section{Reproducibility}
+ 
+In the \emph{omics} field, reproducibility is of biggest concern. Very low 
+p-values for a protein in an experiment are not enough to declare that protein 
+as of interest as a biomarker. A good biomarker should give as well a 
+reproducible signal, and posses a biologically significant effect size. 
+According to our experience, a protein giving less than three counts in the 
+most abundant condition results of poor reproducibility, to be declared as
+statistically significant, experiment after experiment. On the other hand most
+of the false positives in an spiking experiment show log fold changes below
+1. These two observations \cite{gregori2013} allow to improve the results 
+obtained in the previous
+sections. The trick is to flag as relevant those proteins 
+which have low p-values, high enough signal, and good effect size. In performing
+this relevance filter we may even accept higher adjusted p-values than usual. 
+This flagging is provided by the function \texttt{test.results}.
+
+<<Chunk4.repro, echo=TRUE, tidy=TRUE>>=
+###  Cut-off values for a relevant protein as biomarker
+alpha.cut <- 0.05
+SpC.cut <- 2
+lFC.cut <- 1
+
+###  Relevant proteins according to the Poisson GLM
+pois.tbl <- test.results(pois.res,e,pData(e)$treat,"U600","U200",div,
+                         alpha=alpha.cut,minSpC=SpC.cut,minLFC=lFC.cut,
+                         method="BH")$tres
+(pois.nms <- rownames(pois.tbl)[pois.tbl$DEP=="T"])
+
+###  Truth table
+ridx <- grep("HUMAN",pois.nms)
+tp <- length(ridx)
+fp <- length(pois.nms)-length(ridx)
+(tt.pois2 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+
+###  Relevant proteins according to the quasi-likelihood GLM
+ql.tbl <- test.results(ql.res,e,pData(e)$treat,"U600","U200",div,
+                    alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
+(ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"])
+
+###  Truth table
+ridx <- grep("HUMAN",ql.nms)
+tp <- length(ridx)
+fp <- length(ql.nms)-length(ridx)
+(tt.ql2 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+
+###  Relevant proteins according to the negative-binomial GLM
+nb.tbl <- test.results(nb.res,e,pData(e)$treat,"U600","U200",div,
+                    alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
+(nb.nms <- rownames(nb.tbl)[nb.tbl$DEP=="T"])
+
+###  Truth table
+ridx <- grep("HUMAN",nb.nms)
+tp <- length(ridx)
+fp <- length(nb.nms)-length(ridx)
+(tt.nb2 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+As you may see, without the post-test filter a relatively low
+adjusted p-value cut-off is required to keep an acceptable number of false positives. The post-test filter allows to relax the p-value cut-off improving 
+at the same time both the number of true positives and false positives.
+
+<<Chunk5.summary, echo=FALSE, results=tex>>=
+fl <- pois.tbl$adjp <= 0.05
+sig <- sum(fl)
+tp <- length(grep("HUMAN",rownames(pois.tbl)[fl]))
+fp <- sig-tp
+tt.pois0 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp)
+
+fl <- ql.tbl$adjp <= 0.05
+sig <- sum(fl)
+tp <- length(grep("HUMAN",rownames(ql.tbl)[fl]))
+fp <- sig-tp
+tt.ql0 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp)
+
+fl <- nb.tbl$adjp <= 0.05
+sig <- sum(fl)
+tp <- length(grep("HUMAN",rownames(nb.tbl)[fl]))
+fp <- sig-tp
+tt.nb0 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp)
+
+library(xtable)
+df <- data.frame(Test=character(9),Significance=numeric(9),
+                 Filtered=character(9),
+                 TP=integer(9),FP=integer(9),TN=integer(9),FN=integer(9),
+                 stringsAsFactors=FALSE)
+df$Test[1] <- df$Test[4] <- df$Test[7] <- "Poisson"
+df$Test[2] <- df$Test[5] <- df$Test[8] <- "Quasi-likelihood"
+df$Test[3] <- df$Test[6] <- df$Test[9] <- "Negative-binomial"
+df$Significance[1:3] <- 0.05
+df$Significance[4:6] <- 0.01
+df$Significance[7:9] <- 0.05
+df$Filtered[1:6] <- "No"
+df$Filtered[7:9] <- "Yes"
+df[1,4:7] <- tt.pois0
+df[2,4:7] <- tt.ql0
+df[3,4:7] <- tt.nb0
+df[4,4:7] <- tt.pois1
+df[5,4:7] <- tt.ql1
+df[6,4:7] <- tt.nb1
+df[7,4:7] <- tt.pois2
+df[8,4:7] <- tt.ql2
+df[9,4:7] <- tt.nb2
+print(xtable(df,align=c("r","r","c","c","c","c","c","c"),
+             caption=c("Truth tables"),
+             display=c("d","s","f","s","d","d","d","d")),
+      type="latex",hline.after=c(-1,0,3,6,9),include.rownames=FALSE)
+@
+
+
+\section{Other functions in the package}
+ 
+A useful tool to visualize the global results of differential expression tests
+is a table of accumulated frequencies of features by p-values in bins of
+log fold changes. It may help in finding the most appropriate post-test filter
+cut-off values in a given experiment.
+
+<<Chunk6.other, echo=TRUE, tidy=TRUE>>=
+### All features
+pval.by.fc(ql.tbl$adjp,ql.tbl$LogFC)
+
+### Filtering by minimal signal
+fl <- ql.tbl$U600 > 2
+pval.by.fc(ql.tbl$adjp[fl],ql.tbl$LogFC[fl])
+@
+
+Another usual tool is a volcanoplot with the ability to visualize the effect
+of different post-test filter cut-off values.
+
+\begin{figure}[H]
+\centering
+<<fig=TRUE, echo=TRUE, width=5, height=5>>=
+par(mar=c(5,4,0.5,2)+0.1)
+res.volcanoplot(ql.tbl,max.pval=0.05,min.LFC=1,maxx=3,maxy=NULL,
+                            ylbls=3)
+@
+\caption{Volcanoplot}\label{volcano}
+\end{figure}
+
+\newpage
+
+\begin{thebibliography}{11}
+\bibitem{shi2010}
+Shi, L. et al. \emph{MAQC Consortium: The MicroArray Quality Control (MAQC)-II
+study of common practices for the development and validation of microarray-based
+predictive models}. Nat Biotech 2010, 28, 827-838.
+\bibitem{shi2008}
+Shi, L. et al. \emph{The balance of reproducibility, sensitivity, and 
+specificity of lists of differentially expressed genes in microarray studies}.
+BMC Bioinformatics 2008, 9 Suppl 9, S10.
+\bibitem{luo2010}
+Luo, J. et al. \emph{A comparison of batch effect removal methods for 
+enhancement of prediction performance using MAQC-II microarray gene expression
+data}. The Pharmacogenomics Journal 2010, 10, 278-291.
+\bibitem{mallik2010} Mallick P., Kuster B. \emph{Proteomics: a pragmatic 
+perspective.} Nat Biotechnol 2010;28:695-709.
+\bibitem{neilson2011}
+Neilson K.A., Ali N.A., Muralidharan S., Mirzaei M., Mariani M.,
+Assadourian G., et al. \emph{Less label, more free: approaches in
+label-free quantitative mass spectrometry.} Proteomics
+2011;11:535-53.
+\bibitem{gregori2013}  
+Gregori J., Villareal L., Sanchez A., Baselga J., 
+Villanueva J.,  \emph{An Effect Size Filter Improves the Reproducibility in Spectral Counting-based Comparative Proteomics}. Journal of Proteomics 2013,  
+\url{http://dx.doi.org/10.1016/j.jprot.2013.05.030}
+\bibitem{Gatto2012} Laurent Gatto and Kathryn S. Lilley, MSnbase - an R/Bioconductor package for isobaric tagged mass spectrometry data visualization, processing and quantitation, Bioinformatics 28(2), 288-289 (2012).
+\bibitem{chambers} Chambers J.M. \emph{Software for data analysis: programming
+with R}, 2008 Springer
+\bibitem{genolini} Genolini C. \emph{A (Not So) Short Introduction to S4} (2008)
+\bibitem{gentleman} Falcon S., Morgan M., Gentleman R. \emph{An Introduction to
+Bioconductor's ExpressionSet Class} (2007)
+\bibitem{agresti2002}
+Agresti A., \emph{Categorical Data Analysis},
+Wiley-Interscience, Hoboken NJ, 2002
+\bibitem{robinson2010}
+Robinson MD, McCarthy DJ and Smyth GK (2010). \emph{edgeR: a Bioconductor 
+package for differential expression analysis of digital gene expression data}. Bioinformatics 26, 139-140
+\bibitem{li2010}
+Li, M.; Gray, W.; Zhang, H.; Chung, C. H.; Billheimer, D.; Yarbrough, W.
+G.; Liebler, D. C.; Shyr, Y.; Slebos, R. J. C. \emph{Comparative shotgun
+proteomics using spectral count data and quasi-likelihood modeling}. 
+J Proteome Res 2010, 9, 4295-4305
+\bibitem{josep2012} Gregori J., Villareal L., Mendez O., Sanchez A.,
+Baselga J., Villanueva J., \emph{Batch effects correction improves the 
+sensitivity of significance tests in spectral counting-based comparative 
+discovery proteomics}, Journal of Proteomics, 2012, 75, 3938-3951
+\bibitem{BH} Benjamini, Y., and Hochberg, Y. (1995). \emph{Controlling the 
+false discovery rate: a practical and powerful approach to multiple testing}. Journal of the Royal Statistical Society Series B, 57, 289-300.
+
+\end{thebibliography}
+
+\end{document}
+ 
+

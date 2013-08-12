@@ -1,0 +1,309 @@
+%\VignetteIndexEntry{msmsTests: controlling batch effects by blocking}
+%\VignetteDepends{msmsTests}
+%\VignetteKeywords{multivariate, hplot}
+%\VignettePackage{msmsTests}
+
+\documentclass[12pt,a4paper,oneside]{article}
+\usepackage{fullpage}
+\usepackage{float}
+\usepackage[section]{placeins}
+\usepackage{enumerate}
+
+\begin{document}
+\SweaveOpts{keep.source=TRUE,concordance=TRUE}
+
+\title{msmsTests package\\
+       Blocks design to compensate batch effects}
+\author{Josep Gregori, Alex Sanchez, and Josep Villanueva\\
+   Vall Hebron Institute of Oncology \&\\
+   Statistics Dept. Barcelona University\\
+  \texttt{jgregori@vhio.net}}
+\date{July 2013}
+
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+
+This vignette exemplifies the use of the packages msmsEDA and msmsTests
+in discovering and correcting batch effects in label-free LC-MS/MS data
+based on spectral counts. Label-free experiments are specially sensitive
+to these effects as each condition has to be measured separately and may be
+influenced by uncontrolled factors in a different extend.
+
+\section{Dataset}
+
+This dataset \cite{gregori2013} is the result of spiking experiments, 
+showing real LC-MS/MS data. Samples of 500 micrograms of a standard 
+yeast lysate are spiked with 200 and 600fm of a complex mix of 
+48 equimolar human proteins (UPS1, Sigma-Aldrich).
+The dataset comes with the package msmsEDA \cite{msmsEDA},
+and was used to evidence batch effects by exploratory data analysis 
+tools \cite{josep2012}.
+The dataset consists in an instance of the \emph{MSnSet} class, defined in the 
+MSnbase package \cite{Gatto2012}, a S4 class \cite{chambers} \cite{genolini}. 
+This \emph{MSnSet} object contains
+a spectral counts (SpC) matrix in the \emph{assayData}
+slot, and factors treatment and batch in the \emph{phenoData} slot.
+(See also the expressionSet vignette by vignette("ExpressionSetIntroduction",package="Biobase") \cite{gentleman})
+<<echo=FALSE>>=
+options(continue=" ")
+@
+
+<<SetupChunk, echo = TRUE>>=
+library(msmsTests)
+data(msms.dataset)
+msms.dataset
+msms.counts <- exprs(msms.dataset)
+dim(msms.counts)
+table(pData(msms.dataset)$treat,pData(msms.dataset)$batch)
+@
+
+Although the mix is equimolar the signal strength of each protein is markedly
+different, allowing to cover a wide range of SpC values, what makes it 
+specially worth in this sort of experiments:
+
+<<DistChunk, echo = TRUE>>=
+idx <- grep("HUMAN",featureNames(msms.dataset)) 
+mSpC <- t( apply(msms.counts[idx,],1,function(x) 
+                   tapply(x,pData(msms.dataset)$treat,mean)) )
+apply(mSpC,2,summary)
+@
+
+\section{Batch effects}
+
+Real life LC-MS/MS experiments use to be complicated enough 
+to be able to get all required technical or biological replicates 
+in a single batch run. Commonly a dataset collects results from
+multiple batches. The batches may be influenced by factors 
+which escape our control capacity, and typically these datasets
+show the so known '\emph{batch effects}' when the runs where
+obtained in different dates. The confounding
+caused by these effects is easily evidenced by multidimensional
+tools like Principal Components Analysis (PCA) or Hierarchical
+Clustering (HC), when the samples cluster by batches instead
+of by treatment \cite{josep2012} \cite{luo2010} .  
+
+<<PCAChunk, echo=TRUE, tidy=FALSE>>=
+snms <- substr(as.character(pData(msms.dataset)$treat),1,2)
+snms <- paste(snms,as.integer(pData(msms.dataset)$batch),sep=".")
+smpl.pca <- counts.pca(msms.dataset,snms=snms)$pca
+@
+
+\begin{figure}[H]
+\centering
+<<fig=TRUE, echo=FALSE, width=6.5, height=4>>=
+par(mar=c(4,4,0.5,2)+0.1)
+facs <- data.frame(batch=pData(msms.dataset)$batch)
+counts.pca(msms.dataset,facs=facs,snms=snms)
+@
+\caption{Principal Components Analysis}\label{pca}
+\end{figure}
+
+
+\section{Results on a single batch}
+
+The next code shows the results obtained from the data of a single
+batch with four replicates in each condition. The statistic test
+used for differential expression is the quasi-likelihood GLM
+\cite{agresti2002} \cite{li2010}, and
+the p-values are adjusted with FDR control by the Benjamini-Hochberg
+\cite{BH} method. The quality of the results is given by a truth table.
+
+<<SubsetChunk, echo = TRUE>>=
+###  Subset and pre-process dataset
+fl <- pData(msms.dataset)$batch=="2502"
+e <- msms.dataset[,fl]
+e <- pp.msms.data(e)
+### Null and alternative model
+null.f <- "y~1"
+alt.f <- "y~treat"
+### Normalizing condition
+counts <- exprs(e)
+div <- apply(counts,2,sum)
+### Quasi-likelihood GLM
+ql.res <- msms.glm.qlll(e,alt.f,null.f,div=div)
+### Adjust p-values with FDR control.
+adjp <- p.adjust(ql.res$p.value,method="BH")
+###  Truth table
+nh <- length(grep("HUMAN",featureNames(e)))
+ny <- length(grep("HUMAN",featureNames(e),invert=TRUE))
+tp <- length(grep("HUMAN",rownames(ql.res)[adjp<=0.05]))
+fp <- sum(adjp<=0.05)-tp
+(tt.ql1 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+These results may be polished by a post-test filter, so
+that only relevant features are accepted as differentially expressed,
+and the false positives are further restricted \cite{gregori2013}.
+
+<<SubsetFChunk, echo = TRUE>>=
+###  Post-test filter
+ql.tbl <- test.results(ql.res,e,pData(e)$treat,"U600","U200",div,
+                    alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
+ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"]
+###  Truth table
+ridx <- grep("HUMAN",ql.nms)
+tp <- length(ridx)
+fp <- length(ql.nms)-length(ridx)
+(tt.ql11 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+\section{Results on the global dataset}
+
+With a higher number of replicates the tests become more sensitive, and
+a higher number of differentially expressed features may be identified.
+The next code explores the full dataset, composed of two batches and
+seven replicates of each condition. Again the quality of the results 
+is given by a truth table.
+
+<<GlobalChunk, echo = TRUE>>=
+###  Pre-process dataset
+gble <- pp.msms.data(msms.dataset)
+### Null and alternative model
+null.f <- "y~1"
+alt.f <- "y~treat"
+### Normalizing condition
+div <- apply(exprs(gble),2,sum)
+### Quasi-likelihood GLM
+ql.res <- msms.glm.qlll(gble,alt.f,null.f,div=div)
+### Adjust p-values with FDR control.
+adjp <- p.adjust(ql.res$p.value,method="BH")
+###  Truth table
+nh <- length(grep("HUMAN",featureNames(gble)))
+ny <- length(grep("HUMAN",featureNames(gble),invert=TRUE))
+tp <- length(grep("HUMAN",rownames(ql.res)[adjp<=0.05]))
+fp <- sum(adjp<=0.05)-tp
+(tt.ql2 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+Applying a post-test filter, as before, the results become:
+
+<<GlobalFChunk, echo = TRUE>>=
+###  Post-test filter
+ql.tbl <- test.results(ql.res,gble,pData(gble)$treat,"U600","U200",div,
+                    alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
+ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"]
+###  Truth table
+ridx <- grep("HUMAN",ql.nms)
+tp <- length(ridx)
+fp <- length(ql.nms)-length(ridx)
+(tt.ql22 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+\section{Results on the global dataset with a blocking factor}
+
+When the batches are balanced in the treatment conditions the
+presence of confounding factors translates into bigger variance
+and lower sensitivity. We may account for this extra variability 
+by introducing the batches into the model, as a blocking factor.
+The next code explores the corresponding results.
+
+<<BlockChunk, echo = TRUE>>=
+### Null and alternative model
+null.f <- "y~batch"
+alt.f <- "y~treat+batch"
+### Quasi-likelihood GLM
+ql.res <- msms.glm.qlll(gble,alt.f,null.f,div=div)
+### Adjust p-values with FDR control.
+adjp <- p.adjust(ql.res$p.value,method="BH")
+###  Truth table
+nh <- length(grep("HUMAN",featureNames(gble)))
+ny <- length(grep("HUMAN",featureNames(gble),invert=TRUE))
+tp <- length(grep("HUMAN",rownames(ql.res)[adjp<=0.05]))
+fp <- sum(adjp<=0.05)-tp
+(tt.ql3 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+The correction improved the number of true positives, but significantly
+increased the number of false positives. This may be polished by the
+post-test filter to remove the non relevant features:
+
+<<BlockFChunk, echo = TRUE>>=
+###  Post-test filter
+ql.tbl <- test.results(ql.res,gble,pData(gble)$treat,"U600","U200",div,
+                    alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
+ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"]
+###  Truth table
+ridx <- grep("HUMAN",ql.nms)
+tp <- length(ridx)
+fp <- length(ql.nms)-length(ridx)
+(tt.ql33 <- data.frame(TP=tp,FP=fp,TN=ny-fp,FN=nh-tp))
+@
+
+\section{Comparison of results}
+
+The following table collects the results obtained so far, where we see
+how increasing the number of replicates we improve the sensitivity,
+how the use of a post-test filter helps in restricting the number of
+false positives, and how blocking helps to remove the extra variability
+introduced by batch effects.
+
+<<CompChunk, echo = FALSE, results=tex>>=
+gbl.tt <- rbind(tt.ql1,tt.ql11,tt.ql2,tt.ql22,tt.ql3,tt.ql33)
+rownames(gbl.tt) <- c("subset","subset filtered",
+                      "global","global filtered",
+                      "blocking","blocking filtered")		  
+library(xtable)
+print(xtable(gbl.tt,align=c("r","r","r","r","r"),
+             caption=c("Truth tables"),
+             display=c("s","d","d","d","d")),
+      type="latex",hline.after=c(-1,0,2,4,6),include.rownames=TRUE)
+@
+
+\begin{figure}[H]
+\centering
+<<fig=TRUE, echo=FALSE, width=3, height=3.5>>=
+par(mar=c(5, 3, 2, 2) + 0.1)
+par(cex.axis=0.8,cex.lab=0.8)
+rownames(gbl.tt) <- c("subset","subset\nfiltered",
+                      "global","global\nfiltered",
+                      "blocking","blocking\nfiltered")		  
+barplot(t(data.matrix(gbl.tt[,1:2])),beside=TRUE,las=2,space=c(0,0.25),
+        legend.text=c("TP","FP"),args.legend=list(x="topleft",cex=0.8,bty="n"))
+@
+\caption{Comparison of results}\label{barplot}
+\end{figure}
+
+\newpage
+
+\begin{thebibliography}{11}
+\bibitem{gregori2013}  
+Gregori J., Villareal L., Sanchez A., Baselga J., 
+Villanueva J.,  \emph{An Effect Size Filter Improves the Reproducibility in Spectral Counting-based Comparative Proteomics}. Journal of Proteomics 2013, 
+\url{http://dx.doi.org/10.1016/j.jprot.2013.05.030}  
+\bibitem{msmsEDA}
+Gregori J., Sanchez A. and Villanueva J. (2013). \emph{msmsEDA: 
+Exploratory Data Analysis of LC-MS/MS data by spectral counts}.
+R package version 1.0.
+\bibitem{josep2012} Gregori J., Villareal L., Mendez O., Sanchez A.,
+Baselga J., Villanueva J., \emph{Batch effects correction improves the 
+sensitivity of significance tests in spectral counting-based comparative 
+discovery proteomics}, Journal of Proteomics, 2012, 75, 3938-3951
+\bibitem{Gatto2012} Laurent Gatto and Kathryn S. Lilley, MSnbase - an R/Bioconductor package for isobaric tagged mass spectrometry data visualization, processing and quantitation, Bioinformatics 28(2), 288-289 (2012).
+\bibitem{chambers} Chambers J.M. \emph{Software for data analysis: programming
+with R}, 2008 Springer
+\bibitem{genolini} Genolini C. \emph{A (Not So) Short Introduction to S4} (2008)
+\bibitem{gentleman} Falcon S., Morgan M., Gentleman R. \emph{An Introduction to
+Bioconductor's ExpressionSet Class} (2007)
+\bibitem{luo2010}
+Luo, J. et al. \emph{A comparison of batch effect removal methods for 
+enhancement of prediction performance using MAQC-II microarray gene expression
+data}. The Pharmacogenomics Journal 2010, 10, 278-291.
+\bibitem{agresti2002}
+Agresti A., \emph{Categorical Data Analysis},
+Wiley-Interscience, Hoboken NJ, 2002
+\bibitem{li2010}
+Li, M.; Gray, W.; Zhang, H.; Chung, C. H.; Billheimer, D.; Yarbrough, W.
+G.; Liebler, D. C.; Shyr, Y.; Slebos, R. J. C. \emph{Comparative shotgun
+proteomics using spectral count data and quasi-likelihood modeling}. 
+J Proteome Res 2010, 9, 4295-4305
+\bibitem{BH} Benjamini, Y., and Hochberg, Y. (1995). \emph{Controlling the 
+false discovery rate: a practical and powerful approach to multiple testing}. Journal of the Royal Statistical Society Series B, 57, 289-300.
+
+\end{thebibliography}
+
+\end{document}
+ 
+
