@@ -1,7 +1,7 @@
 Package: msmsTests
 Type: Package
 Title: LC-MS/MS Differential Expression Tests
-Version: 0.99.2
+Version: 0.99.3
 Date: 2013-07-26
 Author: Josep Gregori, Alex Sanchez, and Josep Villanueva
 Maintainer: Josep Gregori i Font <gregori@aiqs.es>

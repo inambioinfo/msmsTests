@@ -8,6 +8,7 @@
 \usepackage{float}
 \usepackage[section]{placeins}
 \usepackage{enumerate}
+\usepackage{hyperref}
 
 \begin{document}
 \SweaveOpts{keep.source=TRUE,concordance=TRUE}
