@@ -1,6 +1,8 @@
 ##################################################
 ###  PROTEOMICS DIFFERENTIAL EXPRESSION TESTS  ###
 ###       ON AN SPECTRAL COUNTS MATRIX         ###
+###                by J. Gregori               ###
+###              3rd August, 2013              ###
 ##################################################
 
 ###  GLM Poisson test, given formula of Ha model 
@@ -147,7 +149,7 @@ test.results <- function(test,msnset,gpf,gp1,gp2,div=NULL,
   mx.mean <- apply(mcpg[,c(iA,iB)],1,max)
   flags <- (adjp < alpha) & (mx.mean >= minSpC) & 
              abs(test[nms,"LogFC"]) >= minLFC
-  rm$DEP <- ifelse(flags,"T","F")
+  rm$DEP <- flags
   
   n <- sum(flags)
   nms <- nms[flags]
@@ -203,7 +205,7 @@ res.volcanoplot <- function(tres,max.pval=0.05,min.LFC=1,maxx=3,maxy=10,
   pflags <- tres$adjp <= max.pval & abs(tres$LogFC) >= min.LFC
   points(tres$LogFC[pflags],-log10(tres$adjp[pflags]),pch=21,bg="blue",
          cex=0.7)
-  fflags <- pflags & tres$DEP=="F"
+  fflags <- pflags & !tres$DEP
   points(tres$LogFC[fflags],-log10(tres$adjp[fflags]),pch=21,bg="red",
          cex=0.7)
   fflags <- pflags & -log10(tres$adjp) > ylbls

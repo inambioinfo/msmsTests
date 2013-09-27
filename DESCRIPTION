@@ -1,11 +1,12 @@
 Package: msmsTests
 Type: Package
 Title: LC-MS/MS Differential Expression Tests
-Version: 0.99.4
-Date: 2013-07-26
+Version: 0.99.3
+Date: 2013-09-24
 Author: Josep Gregori, Alex Sanchez, and Josep Villanueva
-Maintainer: Josep Gregori i Font <gregori@aiqs.es>
-Depends: MSnbase, msmsEDA
+Maintainer: Josep Gregori i Font <josep.gregori@gmail.com>
+Depends: R (>= 3.0.1), MSnbase, msmsEDA
 Imports: edgeR, qvalue
 Description: Statistical tests for label-free LC-MS/MS data by spectral counts, to discover differentially expressed proteins between two biological conditions. Three tests are available: Poisson GLM regression, quasi-likelihood GLM regression, and the negative binomial of the edgeR package.The three models admit blocking factors to control for nuissance variables.To assure a good level of reproducibility a post-test filter is available, where we may set the minimum effect size considered biologicaly relevant, and the minimum expression of the most abundant condition.
 License: GPL-2
+biocViews: Software, MassSpectrometry, Proteomics

@@ -53,7 +53,7 @@ test.results(test, msnset, gpf, gp1, gp2, div, alpha = 0.05,
 }
 }
 \details{
-No feature is removed in the filter, but instead they are flagged as T or F
+No feature is removed in the filter, but instead they are flagged as TRUE or FALSE
 depending on whether they are considered as differentially expressed or not, in the \code{DEP} column, taking into account statistic significance and 
 reproducibility metrics.
 }
@@ -73,8 +73,8 @@ The reference level of the main factor is taken as control. }
  for edgeR.}
 \item{p.val}{ The unadjusted p-values obtained from the tests. }
 \item{adjp}{ The multitest adjusted p-values with FDR control. }
-\item{DEP}{ A character type column with T or F flagging the features
- considered both as statistically significant and relevant for reproducibility.}
+\item{DEP}{ A logical flagging the features  considered both as statistically 
+significant and relevant for reproducibility.}
 
 }
 
@@ -128,7 +128,7 @@ lst <- test.results(res,e,pData(e)$treat,"U600","U200",div,
 str(lst)
 lst$cond
 head(lst$tres)
-rownames(lst$tres)[which(lst$tres$DEP=='T')]
+rownames(lst$tres)[which(lst$tres$DEP)]
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

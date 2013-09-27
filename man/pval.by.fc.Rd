@@ -65,7 +65,7 @@ lst <- test.results(res,e,pData(e)$treat,"U600","U200",div,
 pval.by.fc(lst$tres$adjp, lst$tres$LogFC)
 
 ### On all features deemed significant and biologically relevant
-flags <- lst$tres$DEP=="T"
+flags <- lst$tres$DEP
 pval.by.fc(lst$tres$adjp[flags], lst$tres$LogFC[flags])
 }
 \keyword{ htest }

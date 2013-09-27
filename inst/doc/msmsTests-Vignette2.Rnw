@@ -8,8 +8,6 @@
 \usepackage{float}
 \usepackage[section]{placeins}
 \usepackage{enumerate}
-\usepackage{hyperref}
-
 
 \begin{document}
 \SweaveOpts{keep.source=TRUE,concordance=TRUE}
@@ -19,7 +17,7 @@
 \author{Josep Gregori, Alex Sanchez, and Josep Villanueva\\
    Vall Hebron Institute of Oncology \&\\
    Statistics Dept. Barcelona University\\
-  \texttt{jgregori@vhio.net}}
+  \texttt{josep.gregori@gmail.com}}
 \date{July 2013}
 
 \maketitle
@@ -144,7 +142,7 @@ and the false positives are further restricted \cite{gregori2013}.
 ###  Post-test filter
 ql.tbl <- test.results(ql.res,e,pData(e)$treat,"U600","U200",div,
                     alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
-ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"]
+ql.nms <- rownames(ql.tbl)[ql.tbl$DEP]
 ###  Truth table
 ridx <- grep("HUMAN",ql.nms)
 tp <- length(ridx)
@@ -186,7 +184,7 @@ Applying a post-test filter, as before, the results become:
 ###  Post-test filter
 ql.tbl <- test.results(ql.res,gble,pData(gble)$treat,"U600","U200",div,
                     alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
-ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"]
+ql.nms <- rownames(ql.tbl)[ql.tbl$DEP]
 ###  Truth table
 ridx <- grep("HUMAN",ql.nms)
 tp <- length(ridx)
@@ -226,7 +224,7 @@ post-test filter to remove the non relevant features:
 ###  Post-test filter
 ql.tbl <- test.results(ql.res,gble,pData(gble)$treat,"U600","U200",div,
                     alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
-ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"]
+ql.nms <- rownames(ql.tbl)[ql.tbl$DEP]
 ###  Truth table
 ridx <- grep("HUMAN",ql.nms)
 tp <- length(ridx)

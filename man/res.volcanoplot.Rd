@@ -18,14 +18,14 @@ res.volcanoplot(tres, max.pval=0.05, min.LFC=1, maxx=3, maxy=10,
  The dataframe with test results as obtained from \code{test.results()}.
  Or a data frame with, at least, the following columns: \code{LogFC} with
  log fold changes, \code{adjp} with multitest adjusted p-values, and
- \code{DEP} with 'T' or 'F' as post test filter results, being the 'T'
- features both significant and relevant.
+ \code{DEP} with TRUE or FALSE as post test filter results, being the TRUE
+ features both statistically significant and relevant for reproducibility.
 }
   \item{max.pval}{
- The maximum p-value considered as statistically significant.
+ The maximum adjusted p-value considered as statistically significant.
 }
   \item{min.LFC}{
- The minimum log fold change considered as biologically relevant.
+ The minimum absolute log fold change considered as biologically relevant.
 }
   \item{maxx}{
  The maximum value in abcissas (i.e. log2(fold change)).

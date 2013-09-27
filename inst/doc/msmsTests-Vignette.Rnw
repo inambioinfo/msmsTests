@@ -8,7 +8,6 @@
 \usepackage{float}
 \usepackage[section]{placeins}
 \usepackage{enumerate}
-\usepackage{hyperref}
 
 \begin{document}
 \SweaveOpts{keep.source=TRUE,concordance=TRUE}
@@ -18,7 +17,7 @@
 \author{Josep Gregori, Alex Sanchez, and Josep Villanueva\\
    Vall Hebron Institute of Oncology \&\\
    Statistics Dept. Barcelona University\\
-  \texttt{jgregori@vhio.net}}
+  \texttt{josep.gregori@gmail.com}}
 \date{July 2013}
 
 \maketitle
@@ -250,7 +249,7 @@ lFC.cut <- 1
 pois.tbl <- test.results(pois.res,e,pData(e)$treat,"U600","U200",div,
                          alpha=alpha.cut,minSpC=SpC.cut,minLFC=lFC.cut,
                          method="BH")$tres
-(pois.nms <- rownames(pois.tbl)[pois.tbl$DEP=="T"])
+(pois.nms <- rownames(pois.tbl)[pois.tbl$DEP])
 
 ###  Truth table
 ridx <- grep("HUMAN",pois.nms)
@@ -261,7 +260,7 @@ fp <- length(pois.nms)-length(ridx)
 ###  Relevant proteins according to the quasi-likelihood GLM
 ql.tbl <- test.results(ql.res,e,pData(e)$treat,"U600","U200",div,
                     alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
-(ql.nms <- rownames(ql.tbl)[ql.tbl$DEP=="T"])
+(ql.nms <- rownames(ql.tbl)[ql.tbl$DEP])
 
 ###  Truth table
 ridx <- grep("HUMAN",ql.nms)
@@ -272,7 +271,7 @@ fp <- length(ql.nms)-length(ridx)
 ###  Relevant proteins according to the negative-binomial GLM
 nb.tbl <- test.results(nb.res,e,pData(e)$treat,"U600","U200",div,
                     alpha=0.05,minSpC=2,minLFC=1,method="BH")$tres
-(nb.nms <- rownames(nb.tbl)[nb.tbl$DEP=="T"])
+(nb.nms <- rownames(nb.tbl)[nb.tbl$DEP])
 
 ###  Truth table
 ridx <- grep("HUMAN",nb.nms)
