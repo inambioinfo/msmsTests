@@ -18,7 +18,7 @@
    Vall Hebron Institute of Oncology \&\\
    Statistics Dept. Barcelona University\\
   \texttt{josep.gregori@gmail.com}}
-\date{July 2013}
+\date{September 2013}
 
 \maketitle
 
@@ -272,7 +272,7 @@ barplot(t(data.matrix(gbl.tt[,1:2])),beside=TRUE,las=2,space=c(0,0.25),
 \bibitem{gregori2013}  
 Gregori J., Villareal L., Sanchez A., Baselga J., 
 Villanueva J.,  \emph{An Effect Size Filter Improves the Reproducibility in Spectral Counting-based Comparative Proteomics}. Journal of Proteomics 2013, 
-\url{http://dx.doi.org/10.1016/j.jprot.2013.05.030}  
+http://dx.doi.org/10.1016/j.jprot.2013.05.030
 \bibitem{msmsEDA}
 Gregori J., Sanchez A. and Villanueva J. (2013). \emph{msmsEDA: 
 Exploratory Data Analysis of LC-MS/MS data by spectral counts}.

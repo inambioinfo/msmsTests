@@ -18,7 +18,7 @@
    Vall Hebron Institute of Oncology \&\\
    Statistics Dept. Barcelona University\\
   \texttt{josep.gregori@gmail.com}}
-\date{July 2013}
+\date{September 2013}
 
 \maketitle
 
@@ -386,7 +386,7 @@ label-free quantitative mass spectrometry.} Proteomics
 \bibitem{gregori2013}  
 Gregori J., Villareal L., Sanchez A., Baselga J., 
 Villanueva J.,  \emph{An Effect Size Filter Improves the Reproducibility in Spectral Counting-based Comparative Proteomics}. Journal of Proteomics 2013,  
-\url{http://dx.doi.org/10.1016/j.jprot.2013.05.030}
+http://dx.doi.org/10.1016/j.jprot.2013.05.030
 \bibitem{Gatto2012} Laurent Gatto and Kathryn S. Lilley, MSnbase - an R/Bioconductor package for isobaric tagged mass spectrometry data visualization, processing and quantitation, Bioinformatics 28(2), 288-289 (2012).
 \bibitem{chambers} Chambers J.M. \emph{Software for data analysis: programming
 with R}, 2008 Springer
