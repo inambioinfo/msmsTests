@@ -2,7 +2,7 @@ Package: msmsTests
 Type: Package
 Title: LC-MS/MS Differential Expression Tests
 Version: 0.99.4
-Date: 2013-09-28
+Date: 2013-10-02
 Author: Josep Gregori, Alex Sanchez, and Josep Villanueva
 Maintainer: Josep Gregori i Font <josep.gregori@gmail.com>
 Depends: R (>= 3.0.1), MSnbase, msmsEDA

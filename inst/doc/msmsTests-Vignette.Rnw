@@ -18,7 +18,7 @@
    Vall Hebron Institute of Oncology \&\\
    Statistics Dept. Barcelona University\\
   \texttt{josep.gregori@gmail.com}}
-\date{September 2013}
+\date{October 2013}
 
 \maketitle
 

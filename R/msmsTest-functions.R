@@ -1,8 +1,8 @@
 ##################################################
 ###  PROTEOMICS DIFFERENTIAL EXPRESSION TESTS  ###
-###       ON AN SPECTRAL COUNTS MATRIX         ###
+###         ON SPECTRAL COUNTS MATRIX          ###
 ###                by J. Gregori               ###
-###              3rd August, 2013              ###
+###               September, 2013              ###
 ##################################################
 
 ###  GLM Poisson test, given formula of Ha model 
@@ -186,7 +186,6 @@ pval.by.fc <- function(pvals,lfc)
 }
 
 
-
 ####################
 ###  Volcano plot
 ####################
@@ -213,4 +212,3 @@ res.volcanoplot <- function(tres,max.pval=0.05,min.LFC=1,maxx=3,maxy=10,
     text(tres$LogFC[fflags],-log10(tres$adjp[fflags])+maxy/25,cex=0.7,
          font=2,which(fflags),col="blue")
 }
-
