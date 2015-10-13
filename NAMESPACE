@@ -1,0 +1,2 @@
+export(msms.glm.pois, msms.glm.qlll, msms.edgeR, test.results, pval.by.fc, res.volcanoplot)
+import(edgeR,qvalue)
